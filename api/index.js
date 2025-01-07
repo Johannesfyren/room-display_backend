@@ -15,7 +15,8 @@ const app = express();
 const PORT = 3000;
 const corsOptions = {
   origin: 'https://room-display-react.vercel.app', // Replace with your allowed origin
-  optionsSuccessStatus: 200
+  methods: "GET,POST,PUT,DELETE", // Allowed HTTP methods
+  allowedHeaders: "Content-Type,Authorization", // Allowed headers
 };
 
 app.use(cors(corsOptions));
@@ -23,7 +24,7 @@ app.use(bodyParser.json());
 app.use(express.json());
 
 
-app.post("/refreshAccessToken",cors(corsOptions), async (req, res) => {
+app.post("/refreshAccessToken", async (req, res) => {
     const refreshToken = req.body.refresh_token;
     try{
         const accessToken = await getNewAccessToken(refreshToken)
@@ -42,7 +43,7 @@ app.post("/refreshAccessToken",cors(corsOptions), async (req, res) => {
 
 
 //Used to generate a URL, which returns a code in the frontend, used in "/ouath2callback" to be exchanged for tokens
-app.get("/auth-url", cors(corsOptions), (req, res) => { 
+app.get("/auth-url", (req, res) => { 
   const authUrl = oAuth2Client.generateAuthUrl({
     access_type: "offline",
     scope: SCOPES,
@@ -50,7 +51,7 @@ app.get("/auth-url", cors(corsOptions), (req, res) => {
   res.json({ url: authUrl });
 });
 
-app.get("/oauth2callback", cors(corsOptions), async (req, res) => {
+app.get("/oauth2callback", async (req, res) => {
   const code = req.query.code;
   console.log(code);
 
