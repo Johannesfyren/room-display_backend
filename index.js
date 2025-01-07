@@ -1,95 +1,128 @@
-// const fs = require('fs').promises;
-// const path = require('path');
-// const process = require('process');
-// const {authenticate} = require('@google-cloud/local-auth');
-// const {google} = require('googleapis');
+require('dotenv').config()
+console.log(process.env.CLIENT_ID) 
+const express = require("express");
+const bodyParser = require("body-parser");
 
-// // If modifying these scopes, delete token.json.
-// const SCOPES = ['https://www.googleapis.com/auth/calendar'];
-// // The file token.json stores the user's access and refresh tokens, and is
-// // created automatically when the authorization flow completes for the first
-// // time.
-// const TOKEN_PATH = path.join(process.cwd(), 'token.json');
-// const CREDENTIALS_PATH = path.join(process.cwd(), 'credentials.json');
+const { google } = require("googleapis");
+const fs = require("fs");
+const path = require("path");
+const cors = require("cors");
+const SCOPES = ["https://www.googleapis.com/auth/calendar"];
+const TOKEN_PATH = path.join(process.cwd(), "token.json");
+const CREDENTIALS_PATH = path.join(process.cwd(), "credentials.json");
+// const oAuth2Client = require('./OAuth2.js')
+const app = express();
+const PORT = 3000;
 
-// /**
-//  * Reads previously authorized credentials from the save file.
-//  *
-//  * @return {Promise<OAuth2Client|null>}
-//  */
-// async function loadSavedCredentialsIfExist() {
-//   try {
-//     const content = await fs.readFile(TOKEN_PATH);
-//     const credentials = JSON.parse(content);
-//     console.log('credetials', credentials)
-//     return google.auth.fromJSON(credentials);
-//   } catch (err) {
-//     return null;
-//   }
-// }
+app.use(bodyParser.json());
+app.use(cors());
+app.use(express.json());
 
-// /**
-//  * Serializes credentials to a file compatible with GoogleAuth.fromJSON.
-//  *
-//  * @param {OAuth2Client} client
-//  * @return {Promise<void>}
-//  */
-// async function saveCredentials(client) {
-//   const content = await fs.readFile(CREDENTIALS_PATH);
-//   const keys = JSON.parse(content);
-//   const key = keys.installed || keys.web;
-//   const payload = JSON.stringify({
-//     type: 'authorized_user',
-//     client_id: key.client_id,
-//     client_secret: key.client_secret,
-//     refresh_token: client.credentials.refresh_token,
-//   });
-//   await fs.writeFile(TOKEN_PATH, payload);
-// }
 
-// /**
-//  * Load or request or authorization to call APIs.
-//  *
-//  */
-// async function authorize() {
-//   let client = await loadSavedCredentialsIfExist();
-//   if (client) {
-//     return client;
-//   }
-//   client = await authenticate({
-//     scopes: SCOPES,
-//     keyfilePath: CREDENTIALS_PATH,
-//   });
-//   if (client.credentials) {
-//     await saveCredentials(client);
-//   }
-//   console.log('credetials', client)
-//   return client;
-// }
+app.post("/refreshAccessToken", async (req, res) => {
+    const refreshToken = req.body.refresh_token;
+    try{
 
-// /**
-//  * Lists the next 10 events on the user's primary calendar.
-//  * @param {google.auth.OAuth2} auth An authorized OAuth2 client.
-//  */
-// async function listEvents(auth) {
-//   const calendar = google.calendar({version: 'v3', auth});
-//   const res = await calendar.events.list({
-//     calendarId: 'primary',
-//     timeMin: new Date().toISOString(),
-//     maxResults: 10,
-//     singleEvents: true,
-//     orderBy: 'startTime',
-//   });
-//   const events = res.data.items;
-//   if (!events || events.length === 0) {
-//     console.log('No upcoming events found.');
-//     return;
-//   }
-//   console.log('Upcoming 10 events:');
-//   events.map((event, i) => {
-//     const start = event.start.dateTime || event.start.date;
-//     console.log(`${start} - ${event.summary}`);
-//   });
-// }
+        const accessToken = await getNewAccessToken(refreshToken)
+        if (!refreshToken) {
+            return res.status(400).json({ error: "Missing refresh_token" });
+          }
+        res.json(accessToken);
+    }catch(err){
+        console.error("Error in /refreshAccessToken:", err);
+        res.status(500).json({ error: "Internal server error" });
+    }
 
-// authorize().then(listEvents).catch(console.error);
+  
+
+});
+
+
+//Used to generate a URL, which returns a code in the frontend, used in "/ouath2callback" to be exchanged for tokens
+app.get("/auth-url", (req, res) => { 
+  const authUrl = oAuth2Client.generateAuthUrl({
+    access_type: "offline",
+    scope: SCOPES,
+  });
+  res.json({ url: authUrl });
+});
+
+app.get("/oauth2callback", async (req, res) => {
+  const code = req.query.code;
+  console.log(code);
+
+  if (!code) {
+
+    return res.status(400).send("Authorization code is missing.");
+  }
+
+  try {
+    // Exchange the code for tokens
+
+    const { tokens } = await oAuth2Client.getToken(code);
+    oAuth2Client.setCredentials(tokens);
+
+    res.json(tokens); // Adjust to your app's needs
+  } catch (error) {
+    console.error("Error exchanging code for tokens:", error);
+    res.status(500).send("Authentication failed.");
+  }
+});
+
+function getOAuth2Client() {
+  const credentials = JSON.parse(fs.readFileSync(CREDENTIALS_PATH, "utf8"));
+
+  const { client_secret, client_id, redirect_uris } = credentials.web;
+
+  const oAuth2Client = new google.auth.OAuth2(
+    process.env.CLIENT_ID,
+    process.env.CLIENT_SECRET,
+    redirect_uris[0]
+  );
+
+  if (fs.existsSync(TOKEN_PATH)) {
+    const token = fs.readFileSync(TOKEN_PATH, "utf8");
+    oAuth2Client.setCredentials(JSON.parse(token));
+  }
+
+  return oAuth2Client;
+}
+
+const oAuth2Client = getOAuth2Client();
+
+//Gets and send a new access token for GAPI, for a refresh token from the frontend
+async function getNewAccessToken(refreshToken) {
+  const tokenEndpoint = "https://oauth2.googleapis.com/token";
+  const credentials = JSON.parse(fs.readFileSync(CREDENTIALS_PATH, "utf8"));
+  // const { client_secret, client_id } = credentials.web;
+
+  const body = new URLSearchParams({
+    client_id: process.env.CLIENT_ID,
+    client_secret: process.env.CLIENT_SECRET,
+    refresh_token: refreshToken,
+    grant_type: "refresh_token",
+  });
+
+  try {
+    const response = await fetch(tokenEndpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    return data; // The new access token
+  } catch (error) {
+    console.error("Failed to get new access token:", error);
+  }
+}
+
+// Start the server
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});
