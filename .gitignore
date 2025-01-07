@@ -1,3 +1,4 @@
 .env
 credentials copy.json
 node_modules
+.vercel
