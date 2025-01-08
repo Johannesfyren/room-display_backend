@@ -1,4 +1,5 @@
 require('dotenv').config()
+console.log(process.env.CLIENT_ID) 
 const express = require("express");
 const bodyParser = require("body-parser");
 
@@ -12,34 +13,22 @@ const CREDENTIALS_PATH = path.join(process.cwd(), "credentials.json");
 // const oAuth2Client = require('./OAuth2.js')
 const app = express();
 const PORT = 3000;
-const corsOptions = {
-  origin: 'https://room-display-react.vercel.app', // Replace with your allowed origin
-  methods: "GET,POST,PUT,DELETE", // Allowed HTTP methods
-  allowedHeaders: "*", // Allowed headers
-};
 
-app.use(cors(corsOptions));
+
 app.use(bodyParser.json());
+app.use(cors());
 app.use(express.json());
-app.options("/auth-url", cors(corsOptions));
-app.options("*", (req, res) => {
-  console.log("CORS preflight request received");
-  res.setHeader("Access-Control-Allow-Origin", "https://room-display-react.vercel.app");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
-  res.setHeader("Access-Control-Allow-Credentials", "true"); // Optional, for cookies
-  res.sendStatus(204); // No Content
-});
+app.options('*', cors())
 
 
 app.post("/refreshAccessToken", async (req, res) => {
     const refreshToken = req.body.refresh_token;
-    if (!refreshToken) {
-      return res.status(400).json({ error: "Missing refresh_token" });
-    }
     try{
+
         const accessToken = await getNewAccessToken(refreshToken)
-        
+        if (!refreshToken) {
+            return res.status(400).json({ error: "Missing refresh_token" });
+          }
         res.json(accessToken);
     }catch(err){
         console.error("Error in /refreshAccessToken:", err);
