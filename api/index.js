@@ -22,7 +22,7 @@ const corsOptions = {
 app.use(bodyParser.json());
 app.use(cors(corsOptions));
 app.use(express.json());
-//app.options('*', cors())
+//app.options('*', cors()) 
 
 
 app.post("/refreshAccessToken", async (req, res) => {
