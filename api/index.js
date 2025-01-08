@@ -13,12 +13,16 @@ const CREDENTIALS_PATH = path.join(process.cwd(), "credentials.json");
 // const oAuth2Client = require('./OAuth2.js')
 const app = express();
 const PORT = 3000;
-
+const corsOptions = {
+  origin: 'https://room-display-react.vercel.app', // Replace with your frontend's URL
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  allowedHeaders: "*",
+};
 
 app.use(bodyParser.json());
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
-app.options('*', cors())
+//app.options('*', cors())
 
 
 app.post("/refreshAccessToken", async (req, res) => {
