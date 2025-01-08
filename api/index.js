@@ -1,5 +1,4 @@
 require('dotenv').config()
-console.log(process.env.CLIENT_ID) 
 const express = require("express");
 const bodyParser = require("body-parser");
 
@@ -35,11 +34,12 @@ app.options("*", (req, res) => {
 
 app.post("/refreshAccessToken", async (req, res) => {
     const refreshToken = req.body.refresh_token;
+    if (!refreshToken) {
+      return res.status(400).json({ error: "Missing refresh_token" });
+    }
     try{
         const accessToken = await getNewAccessToken(refreshToken)
-        if (!refreshToken) {
-            return res.status(400).json({ error: "Missing refresh_token" });
-          }
+        
         res.json(accessToken);
     }catch(err){
         console.error("Error in /refreshAccessToken:", err);
