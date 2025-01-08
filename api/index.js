@@ -24,6 +24,7 @@ app.use(bodyParser.json());
 app.use(express.json());
 app.options("/auth-url", cors(corsOptions));
 app.options("*", (req, res) => {
+  console.log("CORS preflight request received");
   res.setHeader("Access-Control-Allow-Origin", "https://room-display-react.vercel.app");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
