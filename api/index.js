@@ -22,7 +22,14 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(express.json());
-app.options("/auth-url", cors(corsOptions));
+//app.options("/auth-url", cors(corsOptions));
+app.options("*", (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "https://your-frontend.com");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
+  res.setHeader("Access-Control-Allow-Credentials", "true"); // Optional, for cookies
+  res.sendStatus(204); // No Content
+});
 
 
 app.post("/refreshAccessToken", async (req, res) => {
