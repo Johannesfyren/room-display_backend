@@ -14,7 +14,7 @@ const CREDENTIALS_PATH = path.join(process.cwd(), "credentials.json");
 const app = express();
 const PORT = 3000;
 const corsOptions = {
-  origin: 'https://room-display-react.vercel.app', // Replace with your frontend's URL
+  origin: ['https://room-display-react.vercel.app','http://localhost:5173'], // Replace with your frontend's URL
   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
   allowedHeaders: "*",
 };
